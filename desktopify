@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
 LC_ALL=C
 
+# Display a message with type identifier
+# Usage: fancy_message info|warning|error message
+function fancy_message() {
+  [[ $# -ne 2 ]] && return
+
+  declare -A types
+  types=(
+    [info]='\e[32m+\e[0m INFO:'
+    [warning]='\e[33m*\e[0m WARNING:'
+    [error]='\e[31m!\e[0m ERROR:'
+  )
+
+  echo -e "${types[${1}]-[?] UNKNOWN:} ${2}"
+}
+
 # Display help usage
 function usage () {
   echo
@@ -50,7 +65,7 @@ EOM
 }
 
 function configure_network() {
-  echo "[+] Will now configure network"
+  fancy_message info "Will now configure network"
   # Disable cloud-init from managing the network
   echo "network: {config: disabled}" > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
 
@@ -122,73 +137,73 @@ if [ $# -lt 1 ]; then
     usage
     exit 0
 else
-    while [ $# -gt 0 ]; do
-        case "${1}" in
-          -de|--de)
-            DESKTOP_ENVIRONMENT="${2}"
-            shift
-            shift;;
-          -force|--force)
-            FORCE=1
-            shift
-            shift;;
-          -h|--h|-help|--help)
-            usage
-            exit 0;;
-          -oem|--oem)
-            ENABLE_OEM=1
-            shift;;
-          *)
-            echo "[!] ERROR: \"${1}\" is not a supported parameter."
-            echo "${DESKTOP_ENVIRONMENT}"
-            usage
-            exit 1;;
-        esac
-    done
+  while [ $# -gt 0 ]; do
+    case "${1}" in
+      -de|--de)
+        DESKTOP_ENVIRONMENT="${2}"
+        shift
+        shift;;
+      -force|--force)
+        FORCE=1
+        shift
+        shift;;
+      -h|--h|-help|--help)
+        usage
+        exit 0;;
+      -oem|--oem)
+        ENABLE_OEM=1
+        shift;;
+      *)
+        fancy_message error "\"${1}\" is not a supported parameter."
+        echo "${DESKTOP_ENVIRONMENT}"
+        usage
+        exit 1;;
+    esac
+  done
 fi
 
 # Set variables based on chosen desktop environment
 case "${DESKTOP_ENVIRONMENT}" in
   ubuntu)
-    echo "[+] Specified Ubuntu desktop"
+    fancy_message info "Specified Ubuntu desktop"
     DESKTOP_PACKAGES="ubuntu-desktop"
     CONFINED_SNAPS=(gnome-3-34-1804 gtk-common-themes snap-store)
     shift;;
   ubuntu-mate)
-    echo "[+] Specified Ubuntu MATE desktop"
+    fancy_message info "Specified Ubuntu MATE desktop"
     DESKTOP_PACKAGES="ubuntu-mate-desktop"
     CLASSIC_SNAPS=(ubuntu-mate-welcome software-boutique)
     shift;;
   ubuntu-budgie)
-    echo "[+] Specified Ubuntu Budgie desktop"
+    fancy_message info "Specified Ubuntu Budgie desktop"
     DESKTOP_PACKAGES="ubuntu-budgie-desktop"
     CLASSIC_SNAPS=(ubuntu-budgie-welcome)
     shift;;
   ubuntu-kylin)
-    echo "[+] Specified Ubunty Kylin desktop"
+    fancy_message info "Specified Ubunty Kylin desktop"
     DESKTOP_PACKAGES="ubuntukylin-desktop"
     shift;;
   ubuntu-studio)
-    echo "[+] Specified Ubuntu Studio desktop"
+    fancy_message info "Specified Ubuntu Studio desktop"
     DESKTOP_PACKAGES="ubuntustudio-desktop"
     shift;;
   kubuntu)
-    echo "[+] Specified Kubuntu desktop"
+    fancy_message info "Specified Kubuntu desktop"
     DESKTOP_PACKAGES="kubuntu-desktop"
     shift;;
   lubuntu)
-    echo "[+] Specified Lubuntu desktop"
+    fancy_message info "Specified Lubuntu desktop"
     DESKTOP_PACKAGES="lubuntu-desktop"
     shift;;
   xubuntu)
-    echo "[+] Specified Xubuntu desktop"
+    fancy_messsage info "Specified Xubuntu desktop"
     DESKTOP_PACKAGES="xubuntu-desktop"
     shift;;
   *)
     if [[ -z ${DESKTOP_ENVIRONMENT} ]]; then
-      echo "[!] ERROR: Please specifiy a desktop environment"
+      fancy_message error "Please specifiy a desktop environment"
     else
-      echo "[!] ERROR: ${DESKTOP_ENVIRONMENT} is not a valid desktop environment"
+      fancy_message error "${DESKTOP_ENVIRONMENT} is not a valid desktop environment"
     fi
     usage
     exit 1;;
@@ -196,35 +211,35 @@ esac
 
 # Check if the user running the script is root
 if [[ $EUID -ne 0 ]]; then
-  echo "[!] ERROR: You need to be root."
+  fancy_message error "You need to be root."
   exit 1
 fi
 
 if [[ ${HOSTTYPE} != "arm" ]] && [[ ${HOSTTYPE} != "aarch64" ]]; then
-  echo "[!] This script is only intended to run on ARM devices."
+  fancy_message error "This script is only intended to run on ARM devices."
   exit 1
 fi
 
 # Check if we're running on a Raspberry Pi
 read -r PI_MODEL </proc/device-tree/model
 if [[ ${PI_MODEL} == *"Raspberry Pi"* ]]; then
-  echo "[+] Configuring your ${PI_MODEL}"
+  fancy_message info "Configuring your ${PI_MODEL}"
 else
-  echo "[!] This is not a Raspberry Pi. Quitting!"
+  fancy_message error "This is not a Raspberry Pi. Quitting!"
   exit 1
 fi
 
 # Check if we're running Ubuntu
 IS_UBUNTU=$(lsb_release -is)
 if [[ ${IS_UBUNTU} != "Ubuntu" ]]; then
-  echo "[!] This script is only intended to run on Ubuntu."
+  fancy_message error "This script is only intended to run on Ubuntu."
   exit 1
 fi
 
 # Check if we're running 20.04
 CODENAME=$(lsb_release -cs)
 if [[ ${CODENAME} != "focal" ]]; then
-  echo "[!] This script is only intended to run on Ubuntu 20.04."
+  fancy_message error "This script is only intended to run on Ubuntu 20.04."
   exit 1
 fi
 
@@ -233,9 +248,9 @@ HARDWARE_PACKAGES=(libgles1 libopengl0 libxvmc1 pi-bluetooth libgpiod-dev python
 
 #Check if system already has a desktop installed
 if [[ ${FORCE} -eq 0 ]] && { dpkg -l "${DESKTOP_PACKAGES}" &>/dev/null; }; then
-  echo "[*] WARNING: ${DESKTOP_PACKAGES} already installed. To force install use the --force option."
+  fancy_message warning "${DESKTOP_PACKAGES} already installed. To force install use the --force option."
 else
-  echo "[+] Will now install ${DESKTOP_PACKAGES}"
+  fancy_message info "Will now install ${DESKTOP_PACKAGES}"
   apt install -y ${DESKTOP_PACKAGES}^
 fi
 
@@ -247,7 +262,7 @@ for CONFINED_SNAP in "${CONFINED_SNAPS[@]}"; do
   snap install "${CONFINED_SNAP}"
 done
 
-echo "[+] Will now install ${HARDWARE_PACKAGES[*]}"
+fancy_message info "Will now install ${HARDWARE_PACKAGES[*]}"
 apt install -y "${HARDWARE_PACKAGES[@]}"
 
 configure_network
