@@ -22,7 +22,7 @@ function usage () {
 }
 
 function apply_tweaks() {
-  if [ "${DESKTOP_ENVIRONMENT}" == "ubuntu-mate" ]; then
+  if [[ ${DESKTOP_ENVIRONMENT} == "ubuntu-mate" ]]; then
     cat <<EOM > /usr/share/glib-2.0/schemas/50_ubuntu-mate-raspi-tweaks.gschema.override
 [org.mate.interface]
 enable-animations=false
@@ -47,7 +47,6 @@ hdmi_drive=2
 EOM
 
   echo "net.ifnames=0 dwc_otg.lpm_enable=0 console=serial0,115200 console=tty1 root=LABEL=writable rootfstype=ext4 elevator=deadline rootwait fixrtc quiet splash plymouth.ignore-serial-consoles" > "/boot/firmware/cmdline.txt"
-
 }
 
 function configure_network() {
@@ -64,13 +63,13 @@ network:
 EOM
 
   # Disable Wifi Powersaving to improve Pi WiFi performance
-  if [ -e /etc/NetworkManager/conf.d/default-wifi-powersave-on.conf ]; then
+  if [[ -e /etc/NetworkManager/conf.d/default-wifi-powersave-on.conf ]]; then
     sed -i 's/wifi.powersave = 3/wifi.powersave = 2/' /etc/NetworkManager/conf.d/default-wifi-powersave-on.conf
   fi
 }
 
 function enable_oem() {
-  if [ "${ENABLE_OEM}" -eq 1 ] && [ "${DESKTOP_ENVIRONMENT}" != "lubuntu" ]; then
+  if [[ ${ENABLE_OEM} -eq 1 ]] && [[ ${DESKTOP_ENVIRONMENT} != "lubuntu" ]]; then
     apt -y install whois
     local DATE=""
     DATE=$(date +%m%H%M%S)
@@ -80,21 +79,21 @@ function enable_oem() {
     adduser --gecos "OEM Configuration (temporary user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 oem
     usermod -a -G adm,sudo -p "${PASSWD}" oem
 
-    if [ "${DESKTOP_ENVIRONMENT}" == "kubuntu" ]; then
+    if [[ ${DESKTOP_ENVIRONMENT} == "kubuntu" ]]; then
       apt-get -y install --no-install-recommends oem-config-kde ubiquity-frontend-kde ubiquity-ubuntu-artwork
     else
       apt-get -y install --no-install-recommends oem-config-gtk ubiquity-frontend-gtk ubiquity-ubuntu-artwork
     fi
 
-    if [ "${DESKTOP_ENVIRONMENT}" == "ubuntu" ]; then
+    if [[ ${DESKTOP_ENVIRONMENT} == "ubuntu" ]]; then
       apt-get -y install --no-install-recommends oem-config-slideshow-ubuntu
-    elif [ "${DESKTOP_ENVIRONMENT}" == "ubuntu-budgie" ]; then
+    elif [[ ${DESKTOP_ENVIRONMENT} == "ubuntu-budgie" ]]; then
       apt-get -y install --no-install-recommends oem-config-slideshow-ubuntu-budgie
       # Force the slideshow to use Ubuntu Budgie artwork.
       sed -i 's/oem-config-slideshow-ubuntu/oem-config-slideshow-ubuntu-budgie/' /usr/lib/ubiquity/plugins/ubi-usersetup.py
       sed -i 's/oem-config-slideshow-ubuntu/oem-config-slideshow-ubuntu-budgie/' /usr/sbin/oem-config-remove-gtk
       sed -i 's/ubiquity-slideshow-ubuntu/ubiquity-slideshow-ubuntu-budgie/' /usr/sbin/oem-config-remove-gtk
-    elif [ "${DESKTOP_ENVIRONMENT}" == "ubuntu-mate" ]; then
+    elif [[ ${DESKTOP_ENVIRONMENT} == "ubuntu-mate" ]]; then
       apt-get -y install --no-install-recommends oem-config-slideshow-ubuntu-mate
       # Force the slideshow to use Ubuntu MATE artwork.
       sed -i 's/oem-config-slideshow-ubuntu/oem-config-slideshow-ubuntu-mate/' /usr/lib/ubiquity/plugins/ubi-usersetup.py
@@ -186,7 +185,7 @@ case "${DESKTOP_ENVIRONMENT}" in
     DESKTOP_PACKAGES="xubuntu-desktop"
     shift;;
   *)
-    if [ -z "${DESKTOP_ENVIRONMENT}" ]; then
+    if [[ -z ${DESKTOP_ENVIRONMENT} ]]; then
       echo "[!] ERROR: Please specifiy a desktop environment"
     else
       echo "[!] ERROR: ${DESKTOP_ENVIRONMENT} is not a valid desktop environment"
@@ -196,20 +195,20 @@ case "${DESKTOP_ENVIRONMENT}" in
 esac
 
 # Check if the user running the script is root
-if [ "$(id -u)" -ne 0 ]; then
+if [[ $(id -u) -ne 0 ]]; then
   echo "[!] ERROR: You need to be root."
   exit 1
 fi
 
 HOST_ARCH=$(uname -m)
-if [ "${HOST_ARCH}" != "armv7l" ] && [ "${HOST_ARCH}" != "aarch64" ]; then
+if [[ ${HOST_ARCH} != "armv7l" ]] && [[ ${HOST_ARCH} != "aarch64" ]]; then
   echo "[!] This script is only intended to run on ARM devices."
   exit 1
 fi
 
 # Check if we're running on a Raspberry Pi
 PI_MODEL=$(grep ^Model /proc/cpuinfo  | cut -d':' -f2- | sed 's/ R/R/')
-if [[ "${PI_MODEL}" == *"Raspberry Pi"* ]]; then
+if [[ ${PI_MODEL} == *"Raspberry Pi"* ]]; then
   echo "[+] Configuring your ${PI_MODEL}"
 else
   echo "[!] This is not a Raspberry Pi. Quitting!"
@@ -218,14 +217,14 @@ fi
 
 # Check if we're running Ubuntu
 IS_UBUNTU=$(lsb_release -is)
-if [ "${IS_UBUNTU}" != "Ubuntu" ]; then
+if [[ ${IS_UBUNTU} != "Ubuntu" ]]; then
   echo "[!] This script is only intended to run on Ubuntu."
   exit 1
 fi
 
 # Check if we're running 20.04
 CODENAME=$(lsb_release -cs)
-if [ "${CODENAME}" != "focal" ]; then
+if [[ ${CODENAME} != "focal" ]]; then
   echo "[!] This script is only intended to run on Ubuntu 20.04."
   exit 1
 fi
