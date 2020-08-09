@@ -17,7 +17,7 @@ function fancy_message() {
 }
 
 # Display help usage
-function usage () {
+function usage() {
   echo
   echo "Usage"
   echo "  $0 --de <desktop environment>"
@@ -38,7 +38,7 @@ function usage () {
 
 function apply_tweaks() {
   if [[ ${DESKTOP_ENVIRONMENT} == "ubuntu-mate" ]]; then
-    cat <<EOM > /usr/share/glib-2.0/schemas/50_ubuntu-mate-raspi-tweaks.gschema.override
+    cat <<EOM >/usr/share/glib-2.0/schemas/50_ubuntu-mate-raspi-tweaks.gschema.override
 [org.mate.interface]
 enable-animations=false
 
@@ -51,7 +51,7 @@ EOM
     glib-compile-schemas /usr/share/glib-2.0/schemas/
   fi
 
-  cat <<EOM > "/boot/firmware/usercfg.txt"
+  cat <<EOM >"/boot/firmware/usercfg.txt"
 # Place "config.txt" changes (dtparam, dtoverlay, disable_overscan, etc.) in
 # this file. Please refer to the README file for a description of the various
 # configuration files on the boot partition.
@@ -61,16 +61,16 @@ dtoverlay=vc4-fkms-v3d
 hdmi_drive=2
 EOM
 
-  echo "net.ifnames=0 dwc_otg.lpm_enable=0 console=serial0,115200 console=tty1 root=LABEL=writable rootfstype=ext4 elevator=deadline rootwait fixrtc quiet splash plymouth.ignore-serial-consoles" > "/boot/firmware/cmdline.txt"
+  echo "net.ifnames=0 dwc_otg.lpm_enable=0 console=serial0,115200 console=tty1 root=LABEL=writable rootfstype=ext4 elevator=deadline rootwait fixrtc quiet splash plymouth.ignore-serial-consoles" >"/boot/firmware/cmdline.txt"
 }
 
 function configure_network() {
   fancy_message info "Will now configure network"
   # Disable cloud-init from managing the network
-  echo "network: {config: disabled}" > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+  echo "network: {config: disabled}" >/etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
 
   # Instruct netplan to hand all network management to NetworkManager
-  cat <<EOM > /etc/netplan/01-network-manager-all.yaml
+  cat <<EOM >/etc/netplan/01-network-manager-all.yaml
 # Let NetworkManager manage all devices on this system
 network:
   version: 2
@@ -139,18 +139,18 @@ if [ $# -lt 1 ]; then
 else
   while [ $# -gt 0 ]; do
     case "${1}" in
-      -de|--de)
+      -de | --de)
         DESKTOP_ENVIRONMENT="${2}"
         shift
         shift;;
-      -force|--force)
+      -force | --force)
         FORCE=1
         shift
         shift;;
-      -h|--h|-help|--help)
+      -h | --h | -help | --help)
         usage
         exit 0;;
-      -oem|--oem)
+      -oem | --oem)
         ENABLE_OEM=1
         shift;;
       *)
@@ -168,37 +168,45 @@ case "${DESKTOP_ENVIRONMENT}" in
     fancy_message info "Specified Ubuntu desktop"
     DESKTOP_PACKAGES="ubuntu-desktop"
     CONFINED_SNAPS=(gnome-3-34-1804 gtk-common-themes snap-store)
-    shift;;
+    shift
+    ;;
   ubuntu-mate)
     fancy_message info "Specified Ubuntu MATE desktop"
     DESKTOP_PACKAGES="ubuntu-mate-desktop"
     CLASSIC_SNAPS=(ubuntu-mate-welcome software-boutique)
-    shift;;
+    shift
+    ;;
   ubuntu-budgie)
     fancy_message info "Specified Ubuntu Budgie desktop"
     DESKTOP_PACKAGES="ubuntu-budgie-desktop"
     CLASSIC_SNAPS=(ubuntu-budgie-welcome)
-    shift;;
+    shift
+    ;;
   ubuntu-kylin)
     fancy_message info "Specified Ubunty Kylin desktop"
     DESKTOP_PACKAGES="ubuntukylin-desktop"
-    shift;;
+    shift
+    ;;
   ubuntu-studio)
     fancy_message info "Specified Ubuntu Studio desktop"
     DESKTOP_PACKAGES="ubuntustudio-desktop"
-    shift;;
+    shift
+    ;;
   kubuntu)
     fancy_message info "Specified Kubuntu desktop"
     DESKTOP_PACKAGES="kubuntu-desktop"
-    shift;;
+    shift
+    ;;
   lubuntu)
     fancy_message info "Specified Lubuntu desktop"
     DESKTOP_PACKAGES="lubuntu-desktop"
-    shift;;
+    shift
+    ;;
   xubuntu)
     fancy_messsage info "Specified Xubuntu desktop"
     DESKTOP_PACKAGES="xubuntu-desktop"
-    shift;;
+    shift
+    ;;
   *)
     if [[ -z ${DESKTOP_ENVIRONMENT} ]]; then
       fancy_message error "Please specifiy a desktop environment"
@@ -206,7 +214,8 @@ case "${DESKTOP_ENVIRONMENT}" in
       fancy_message error "${DESKTOP_ENVIRONMENT} is not a valid desktop environment"
     fi
     usage
-    exit 1;;
+    exit 1
+    ;;
 esac
 
 # Check if the user running the script is root
