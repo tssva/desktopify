@@ -258,7 +258,11 @@ fi
 # Do the installation
 HARDWARE_PACKAGES=(libgles1 libopengl0 libxvmc1 pi-bluetooth libgpiod-dev python3-libgpiod python3-gpiozero)
 
-#Check if system already has a desktop installed
+# Update package list
+fancy_message info "Updating package list"
+  apt-get -y update
+
+# Check if system already has a desktop installed
 if [[ ${FORCE} -eq 0 ]] && { dpkg -l "${DESKTOP_PACKAGES}" &>/dev/null; }; then
   fancy_message warning "${DESKTOP_PACKAGES} already installed. To force install use the --force option."
 else
