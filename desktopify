@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 LC_ALL=C
 
+# Display a progress bar
+# An additional hash is shown for each 2%
+# Usage: progress percentage_complete
+# If not called with a final percentage of 100
+# the cursor will be postioned at the end of the progress bar
+function progress() {
+  local bar
+  local percentage
+  percentage=$(printf "%.0f" "$1")
+  printf -v bar "%*s" "$(( percentage/2 ))" ""
+  printf "[%s%*s] %s%%\r" "${bar// /#}" "$(( 50-percentage/2 ))" "" "${percentage}"
+  [[ ${percentage} -eq 100 ]] && printf "\n"
+}
+
 # Display a message with type identifier
 # Usage: fancy_message info|warning|error message
 function fancy_message() {
@@ -37,6 +51,7 @@ function usage() {
 }
 
 function apply_tweaks() {
+  fancy_message info "Will now apply system tweaks"
   if [[ ${DESKTOP_ENVIRONMENT} == "ubuntu-mate" ]]; then
     cat <<EOM >/usr/share/glib-2.0/schemas/50_ubuntu-mate-raspi-tweaks.gschema.override
 [org.mate.interface]
@@ -85,35 +100,44 @@ EOM
 
 function enable_oem() {
   if [[ ${ENABLE_OEM} -eq 1 ]] && [[ ${DESKTOP_ENVIRONMENT} != "lubuntu" ]]; then
-    apt-get -y install whois
+    fancy_message info "Will now prepare setup wizard to run at next boot"
+    apt-get -y install whois &>/dev/null
+    progress 10
     local DATE=""
-    DATE=$(date +%m%H%M%S)
+    DATE=$(date +%m%H%M%S &>/dev/null)
     local PASSWD=""
-    PASSWD=$(mkpasswd -m sha-512 oem "${DATE}")
-    addgroup --gid 29999 oem
-    adduser --gecos "OEM Configuration (temporary user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 oem
-    usermod -a -G adm,sudo -p "${PASSWD}" oem
+    PASSWD=$(mkpasswd -m sha-512 oem "${DATE}" &>/dev/null)
+    addgroup --gid 29999 oem &>/dev/null
+    adduser --gecos "OEM Configuration (temporary user)" --add_extra_groups --disabled-password --gid 29999 --uid 29999 oem &>/dev/null
+    usermod -a -G adm,sudo -p "${PASSWD}" oem &>/dev/null
+    progress 30
 
     if [[ ${DESKTOP_ENVIRONMENT} == "kubuntu" ]]; then
-      apt-get -y install --no-install-recommends oem-config-kde ubiquity-frontend-kde ubiquity-ubuntu-artwork
+      apt-get -y install --no-install-recommends oem-config-kde ubiquity-frontend-kde ubiquity-ubuntu-artwork &>/dev/null
     else
-      apt-get -y install --no-install-recommends oem-config-gtk ubiquity-frontend-gtk ubiquity-ubuntu-artwork
+      apt-get -y install --no-install-recommends oem-config-gtk ubiquity-frontend-gtk ubiquity-ubuntu-artwork &>/dev/null
     fi
+    progress 50
 
     if [[ ${DESKTOP_ENVIRONMENT} == "ubuntu" ]]; then
-      apt-get -y install --no-install-recommends oem-config-slideshow-ubuntu
+      apt-get -y install --no-install-recommends oem-config-slideshow-ubuntu &>/dev/null
+      progress 70
     elif [[ ${DESKTOP_ENVIRONMENT} == "ubuntu-budgie" ]]; then
-      apt-get -y install --no-install-recommends oem-config-slideshow-ubuntu-budgie
+      apt-get -y install --no-install-recommends oem-config-slideshow-ubuntu-budgie &>/dev/null
+      progress 70
       # Force the slideshow to use Ubuntu Budgie artwork.
       sed -i 's/oem-config-slideshow-ubuntu/oem-config-slideshow-ubuntu-budgie/' /usr/lib/ubiquity/plugins/ubi-usersetup.py
       sed -i 's/oem-config-slideshow-ubuntu/oem-config-slideshow-ubuntu-budgie/' /usr/sbin/oem-config-remove-gtk
       sed -i 's/ubiquity-slideshow-ubuntu/ubiquity-slideshow-ubuntu-budgie/' /usr/sbin/oem-config-remove-gtk
+      progress 80
     elif [[ ${DESKTOP_ENVIRONMENT} == "ubuntu-mate" ]]; then
-      apt-get -y install --no-install-recommends oem-config-slideshow-ubuntu-mate
+      apt-get -y install --no-install-recommends oem-config-slideshow-ubuntu-mate &>/dev/null
+      progress 70
       # Force the slideshow to use Ubuntu MATE artwork.
       sed -i 's/oem-config-slideshow-ubuntu/oem-config-slideshow-ubuntu-mate/' /usr/lib/ubiquity/plugins/ubi-usersetup.py
       sed -i 's/oem-config-slideshow-ubuntu/oem-config-slideshow-ubuntu-mate/' /usr/sbin/oem-config-remove-gtk
       sed -i 's/ubiquity-slideshow-ubuntu/ubiquity-slideshow-ubuntu-mate/' /usr/sbin/oem-config-remove-gtk
+      progress 80
     fi
 
     mkdir -p /var/log/installer
@@ -123,6 +147,7 @@ function enable_oem() {
     systemctl enable oem-config.service
     systemctl enable oem-config.target
     systemctl set-default oem-config.target
+    progress 100
   fi
 }
 
@@ -259,15 +284,25 @@ fi
 HARDWARE_PACKAGES=(libgles1 libopengl0 libxvmc1 pi-bluetooth libgpiod-dev python3-libgpiod python3-gpiozero)
 
 # Update package list
-fancy_message info "Updating package list"
-apt-get -y update
+fancy_message info "Will now update package list"
+while read -r LINE; do
+  if [[ "${LINE}" =~ ^Percent:[[:space:]]([[:digit:]]{1,2}\.[[:digit:]]{4})$ ]] ; then
+    progress "${BASH_REMATCH[1]}"
+  fi
+done < <(DEBIAN_FRONTEND=noninteractive apt-get -y -o APT::Status-deb822-Fd=3 update 3>&1 &>/dev/null)
+progress 100
 
 # Check if system already has a desktop installed
 if [[ ${FORCE} -eq 0 ]] && { dpkg -l "${DESKTOP_PACKAGES}" &>/dev/null; }; then
   fancy_message warning "${DESKTOP_PACKAGES} already installed. To force install use the --force option."
 else
   fancy_message info "Will now install ${DESKTOP_PACKAGES}"
-  apt-get -y install ${DESKTOP_PACKAGES}^
+  while read -r LINE; do
+    if [[ "${LINE}" =~ ^Percent:[[:space:]]([[:digit:]]{1,2}\.[[:digit:]]{4})$ ]] ; then
+      progress "${BASH_REMATCH[1]}"
+    fi
+  done < <(DEBIAN_FRONTEND=noninteractive apt-get -y -o APT::Status-deb822-Fd=3 install "${DESKTOP_PACKAGES}" 3>&1 &>/dev/null)
+  progress 100
 fi
 
 for CLASSIC_SNAP in "${CLASSIC_SNAPS[@]}"; do
@@ -279,7 +314,12 @@ for CONFINED_SNAP in "${CONFINED_SNAPS[@]}"; do
 done
 
 fancy_message info "Will now install ${HARDWARE_PACKAGES[*]}"
-apt-get -y install "${HARDWARE_PACKAGES[@]}"
+while read -r LINE; do
+  if [[ "${LINE}" =~ ^Percent:[[:space:]]([[:digit:]]{1,2}\.[[:digit:]]{4})$ ]] ; then
+    progress "${BASH_REMATCH[1]}"
+  fi
+done < <(DEBIAN_FRONTEND=noninteractive apt-get -y -o APT::Status-deb822-Fd=3 install "${HARDWARE_PACKAGES[@]}" 3>&1 &>/dev/null)
+progress 100
 
 configure_network
 apply_tweaks
