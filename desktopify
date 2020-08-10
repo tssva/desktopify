@@ -258,8 +258,8 @@ if [[ ${HOSTTYPE} != "arm" ]] && [[ ${HOSTTYPE} != "aarch64" ]]; then
 fi
 
 # Check if we're running on a Raspberry Pi
-read -r PI_MODEL </proc/device-tree/model
-if [[ ${PI_MODEL} == *"Raspberry Pi"* ]]; then
+[[ -f /proc/device-tree/model ]] && read -r PI_MODEL </proc/device-tree/model
+if [[ "${PI_MODEL}" =~ ^Raspberry[[:space:]]Pi ]]; then
   fancy_message info "Configuring your ${PI_MODEL}"
 else
   fancy_message error "This is not a Raspberry Pi. Quitting!"
